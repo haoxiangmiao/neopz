@@ -54,7 +54,8 @@ public:
 
     virtual void Write(const bool val);
 
-    virtual void Write(const int *p, int howMany = 1) = 0;
+    //virtual void Write(const int *p, int howMany = 1) = 0;
+	virtual void Write(const int *p, int howMany ) = 0;
 
     virtual void Write(const unsigned int *p, int howMany = 1) = 0;
     
