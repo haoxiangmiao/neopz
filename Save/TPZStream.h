@@ -54,8 +54,7 @@ public:
 
     virtual void Write(const bool val);
 
-    //virtual void Write(const int *p, int howMany = 1) = 0;
-	virtual void Write(const int *p, int howMany ) = 0;
+    virtual void Write(const int *p, int howMany = 1) = 0;
 
     virtual void Write(const unsigned int *p, int howMany = 1) = 0;
     
@@ -257,7 +256,7 @@ public:
         this->Write(&nc);
         for (c = 0; c < nc; c++)
             this->Write(&vec[c]);
-        this->Write(&vec.fCompactScheme,1);
+        this->Write(&vec.fCompactScheme);
         Write(vec.fFree, true);
         Write(vec.fNFree, true);
     }
