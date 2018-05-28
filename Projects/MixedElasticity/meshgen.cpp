@@ -335,8 +335,8 @@ template
 void TElasticityExample1::Sigma<long double>(const TPZVec<long double> &x, TPZFMatrix<long double> &divsigma);
 #endif
 
-template
-void TElasticityExample1::Sigma<Fad<REAL> >(const TPZVec<Fad<REAL> > &x, TPZFMatrix<Fad<REAL> > &sigma);
+//template
+//void TElasticityExample1::Sigma<Fad<REAL> >(const TPZVec<Fad<REAL> > &x, TPZFMatrix<Fad<REAL> > &sigma);
 
 
 /*** To ElasticityExample2 **********/
