@@ -256,7 +256,7 @@ public:
         this->Write(&nc);
         for (c = 0; c < nc; c++)
             this->Write(&vec[c]);
-        this->Write(&vec.fCompactScheme);
+        this->Write(&vec.fCompactScheme,1);
         Write(vec.fFree, true);
         Write(vec.fNFree, true);
     }
