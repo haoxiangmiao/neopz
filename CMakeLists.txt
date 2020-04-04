@@ -388,6 +388,18 @@ if(USING_MKL)
         endif()
 endif(USING_MKL)
 
+#enabling Blaze
+option(USING_BLAZE "Whether the Blaze package will be linked with the library" OFF)
+if(USING_BLAZE)
+	find_package( blaze REQUIRED)
+	if( blaze_FOUND )
+		link_libraries(${MKL_LIB_INTEL})
+	    add_library( blaze_target INTERFACE )
+    else()
+        set (USING_BLAZE "" CACHE PATH "Directory where blaze can be found")
+    endif()
+endif(USING_BLAZE)
+
 #To enable Python bindings
 option(BUILD_PYTHON_BINDING "To build the Python bindings" OFF)
 if (BUILD_PYTHON_BINDING)
@@ -570,10 +582,16 @@ IF (NOT WIN32)
 	target_link_libraries(pz pthread)
 ENDIF()
 
-if (USING_BOOST)
-   target_link_libraries(pz ${Boost_LIBRARIES})
-   target_include_directories(pz PUBLIC ${Boost_INCLUDE_DIR})
+if (USING_BLAZE)
+    target_link_libraries( blaze_target INTERFACE blaze::blaze )
+    target_link_libraries(pz blaze::blaze)
+    add_definitions(-DBLAZE_USE_CPP_THREADS)
 endif()
+
+#if (USING_BOOST)
+#   target_link_libraries(pz ${Boost_LIBRARIES})
+#   target_include_directories(pz PUBLIC ${Boost_INCLUDE_DIR})
+#endif()
 
 if (USING_LOG4CXX)
   target_link_libraries(pz ${LOG4CXX_LIB})
