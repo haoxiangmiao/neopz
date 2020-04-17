@@ -12,7 +12,7 @@
 #define USING_BLAZE
 //#define BLAZE_DEFAULT_ALIGMENT_FLAG = blaze::aligned
 //#define BLAZE_DEFAULT_PADDING_FLAG blaze::unpadded
-#define BLAZE_USE_VECTORIZATION 0
+//#define BLAZE_USE_VECTORIZATION 1 
 #endif
 
 #include "TPZSBFemElementGroup.h"
@@ -38,8 +38,8 @@ extern TPZVec<boost::crc_32_type::value_type> matglobcrc, eigveccrc, stiffcrc, m
 #include <blaze/math/DiagonalMatrix.h>
 #include <blaze/config/Thresholds.h>
 #include <blaze/Math.h>
-#define BLAZE_CPP_THREADS_PARALLEL_MODE 1
-#define BLAZE_USE_SHARED_MEMORY_PARALLELIZATION 1
+//#define BLAZE_CPP_THREADS_PARALLEL_MODE 1
+#define BLAZE_USE_SHARED_MEMORY_PARALLELIZATION 0
 using blaze::rowMajor;
 using blaze::columnMajor;
 using blaze::DynamicMatrix;
@@ -153,7 +153,7 @@ void TPZSBFemElementGroup::ComputeMatrices(TPZElementMatrix &E0, TPZElementMatri
 void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix &ef)
 {
 #ifdef USING_BLAZE
-    blaze::setNumThreads(2);
+    //blaze::setNumThreads(2);
     InitializeElementMatrix(ek, ef);
 
     if (fComputationMode == EOnlyMass) {
@@ -182,14 +182,16 @@ void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix 
     
     blaze::DynamicMatrix<STATE,blaze::columnMajor> E0blaze(n,n), E1blaze(n,n), E2blaze(n,n), E0Invblaze(n,n);
 
-    memcpy(&E0blaze.data()[0], E0.fMat.Adress(), n*n*sizeof(STATE));
-    memcpy(&E1blaze.data()[0], E1.fMat.Adress(), n*n*sizeof(STATE));
-    memcpy(&E2blaze.data()[0], E2.fMat.Adress(), n*n*sizeof(STATE));
+    for(int i=0; i<n; i++){
+	memcpy(&E0blaze.data()[i*E0blaze.spacing()], &E0.fMat.Adress()[i*n], n*sizeof(STATE));
+	memcpy(&E1blaze.data()[i*E1blaze.spacing()], &E1.fMat.Adress()[i*n], n*sizeof(STATE));
+	memcpy(&E2blaze.data()[i*E2blaze.spacing()], &E2.fMat.Adress()[i*n], n*sizeof(STATE));
+    }
     
-    E0Invblaze = blaze::serial(inv( E0blaze ));  // Compute the inverse of E0
+    E0Invblaze = inv( E0blaze );  // Compute the inverse of E0
 
     blaze::DynamicMatrix<STATE,blaze::columnMajor> globmatblaze(2*n,2*n);
-    blaze::DynamicMatrix<STATE,blaze::columnMajor> E0InvE1Tblaze = blaze::serial(E0Invblaze*trans(E1blaze));
+    blaze::DynamicMatrix<STATE,blaze::columnMajor> E0InvE1Tblaze = E0Invblaze*trans(E1blaze);
     
     for (int i=0; i<n; i++) {
         for (int j=0; j<n; j++) {
@@ -198,14 +200,14 @@ void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix 
         }
     }
 
-    blaze::DynamicMatrix<STATE,blaze::columnMajor> E1E0InvE1T = blaze::serial(E1blaze*E0InvE1Tblaze);
+    blaze::DynamicMatrix<STATE,blaze::columnMajor> E1E0InvE1T = E1blaze*E0InvE1Tblaze;
     for (int i=0; i<n; i++) {
         for (int j=0; j<n; j++) {
             globmatblaze(i+n,j) = E1E0InvE1T(i,j)-E2blaze(i,j);
         }
     }
 
-    blaze::DynamicMatrix<STATE,blaze::columnMajor> E1E0Invblaze = blaze::serial(E1blaze*E0Invblaze);
+    blaze::DynamicMatrix<STATE,blaze::columnMajor> E1E0Invblaze = E1blaze*E0Invblaze;
     for (int i=0; i<n; i++) {
         for (int j=0; j<n; j++){
             globmatblaze(i+n,j+n) = -E1E0Invblaze(i,j);
@@ -225,7 +227,10 @@ void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix 
     TPZManVector<std::complex<double> > eigenvalues(2*n);
     
     memcpy(eigenvalues.begin(), &eigvalblaze.data()[0], 2*n*sizeof(std::complex<double>));
-    memcpy(eigenVectors.Adress(), &eigvecblaze.data()[0], 2*n*2*n*sizeof(std::complex<double>));
+    
+    for(int i=0; i<2*n; i++){
+	memcpy(&eigenVectors.Adress()[i*2*n], &eigvecblaze.data()[i*2*n], 2*n*sizeof(std::complex<double>));
+    }
 
     if(0)
     {
@@ -319,9 +324,14 @@ void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix 
         
     fPhiInverse.Redim(n, n);
     blaze::DynamicMatrix<std::complex<double>,blaze::columnMajor> phiblaze(n,n), PhiInverseblaze(n,n);
-    memcpy(&phiblaze.data()[0], fPhi.Adress(),n*n*sizeof(std::complex<double>));
+
+    for(int i=0; i<n; i++){    
+	memcpy(&phiblaze.data()[i*n], &fPhi.Adress()[i*n], n*sizeof(std::complex<double>));
+    }
     PhiInverseblaze = inv( phiblaze );  // Compute the inverse of A
-    memcpy(fPhiInverse.Adress(), &PhiInverseblaze.data()[0], n*n*sizeof(std::complex<double>));
+    for(int i=0; i<n; i++){
+	memcpy(&fPhiInverse.Adress()[i*n], &PhiInverseblaze.data()[i*n], n*sizeof(std::complex<double>));
+    }
 
 #ifdef LOG4CXX
     if (logger->isDebugEnabled())
@@ -336,7 +346,9 @@ void TPZSBFemElementGroup::CalcStiffBlaze(TPZElementMatrix &ek,TPZElementMatrix 
     QVectors.Multiply(fPhiInverse, ekloc);
 
     TPZFMatrix<STATE> globmatkeep(2*n,2*n,0);
-    memcpy(globmatkeep.Adress(), &globmatblaze.data()[0], 2*n*2*n*sizeof(STATE));
+    for(int i=0; i<2*n; i++){    
+	memcpy(&globmatkeep.Adress()[i*2*n], &globmatblaze.data()[i*2*n], 2*n*sizeof(STATE));
+    }
     if(0)
     {
         std::ofstream out("EigenProblem.nb");
@@ -543,14 +555,18 @@ void TPZSBFemElementGroup::CalcStiff(TPZElementMatrix &ek,TPZElementMatrix &ef)
     }
     
 
+    static pthread_mutex_t mutex_serial = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_lock(&mutex_serial);
+
     TPZFMatrix<STATE> globmatkeep(globmat);
     TPZFMatrix< std::complex<double> > eigenVectors;
     TPZManVector<std::complex<double> > eigenvalues;
     
     
 //    usleep((1284-Index())*50000);
-    {
+//    {
         globmatkeep.SolveEigenProblem(eigenvalues, eigenVectors);
+	pthread_mutex_unlock(&mutex_serial);
 #ifdef COMPUTE_CRC
         static pthread_mutex_t mutex =PTHREAD_MUTEX_INITIALIZER;
         pthread_mutex_lock(&mutex);
@@ -575,7 +591,7 @@ void TPZSBFemElementGroup::CalcStiff(TPZElementMatrix &ek,TPZElementMatrix &ef)
         count++;
         pthread_mutex_unlock(&mutex);
 #endif
-    }
+//    }
 
     if(0)
     {
@@ -589,7 +605,7 @@ void TPZSBFemElementGroup::CalcStiff(TPZElementMatrix &ek,TPZElementMatrix &ef)
         }
 //        eigenVectors.Print("eigvec =",std::cout,EMathematicaInput);
     }
-    std::cout << "eigenvalues = " << eigenvalues << std::endl;
+//    std::cout << "eigenvalues = " << eigenvalues << std::endl;
     
     TPZFNMatrix<200,std::complex<double> > QVectors(n,n,0.);
     fPhi.Resize(n, n);
